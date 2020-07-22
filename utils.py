@@ -181,4 +181,6 @@ def SHOE(imudata, g, W=5, G=4.1e8, sigma_a=0.00098**2, sigma_w=(8.7266463e-5)**2
         zupt[k:k+W].fill(T[i])
         i+=1
     zupt = zupt/W
+    plt.figure()
+    plt.plot(zupt)
     return zupt < G

@@ -10,11 +10,11 @@ from math import sin, cos, tan, pi
 from utils import *
 from imu import *
 
-data_folder = 4
-fname = 3
+data_folder = "_non_miroir"
+fname = 4
 dir_path = os.path.dirname(os.path.realpath(__file__))
-gt_path = os.path.join(dir_path, f'data{data_folder}/gt', f'{fname}.csv')
-imu_path = os.path.join(dir_path, f'data{data_folder}/imu', f'{fname}.csv')
+gt_path = os.path.join(dir_path, f'data{data_folder}\\gt', f'{fname}.csv')
+imu_path = os.path.join(dir_path, f'data{data_folder}\\imu', f'{fname}.csv')
 imu = IMU(imu_path, gt_path)
 
 """
@@ -43,7 +43,8 @@ imu = IMU(imu_path, gt_path)
 ++++++++++++++++++++++++++      Get ground truth      ++++++++++++++++++++++++++
 """
 # Get position
-[x_gt, y_gt, z_gt] = imu.get_postion()
+[y_gt, x_gt, z_gt] = imu.get_postion()
+y_gt *= -1
 # Get orientation
 [qx_gt, qy_gt, qz_gt, qw_gt] = imu.get_orientation()
 [phi, theta, gamma] = imu.get_orientation(angle=True)
@@ -58,27 +59,27 @@ imu = IMU(imu_path, gt_path)
 # theta_acc = movingaverage(theta_acc, window=10)
 
 # Calculate accelerometer offsets
-N = 50
-phi_offset, theta_offset, gamma_offset, phi_true_offset, theta_true_offset, gamma_true_offset = 0, 0, 0, 0, 0, 0
-for i in range(N):
-    phi_offset += phi_acc[i]
-    theta_offset += theta_acc[i]
-    gamma_offset += get_mag_yaw(mag_x[i], mag_y[i], mag_z[i], np.array([phi[i], theta[i]]))
-    phi_true_offset += phi[i]
-    theta_true_offset += theta[i]
-    gamma_true_offset += gamma[i]
+# N = 1
+# phi_offset, theta_offset, gamma_offset, phi_true_offset, theta_true_offset, gamma_true_offset = 0, 0, 0, 0, 0, 0
+# for i in range(N):
+#     phi_offset += phi_acc[i]
+#     theta_offset += theta_acc[i]
+#     gamma_offset += get_mag_yaw(mag_x[i], mag_y[i], mag_z[i], np.array([phi[i], theta[i]]))
+#     phi_true_offset += phi[i]
+#     theta_true_offset += theta[i]
+#     gamma_true_offset += gamma[i]
 
-phi_offset = phi_offset / N - phi_true_offset / N
-theta_offset = theta_offset / N - theta_true_offset / N
-gamma_offset = gamma_offset / N - gamma_true_offset / N
+# phi_offset = phi_offset / N - phi_true_offset / N
+# theta_offset = theta_offset / N - theta_true_offset / N
+# gamma_offset = gamma_offset / N - gamma_true_offset / N
 
-print("Roll, Pitch calculated by acceleration offset: " + str(phi_offset) + "," + str(theta_offset))
-print("Yaw calculated by magnetometer offset: " + str(gamma_offset))
-sleep(1)
+# print("Roll, Pitch calculated by acceleration offset: " + str(phi_offset) + "," + str(theta_offset))
+# print("Yaw calculated by magnetometer offset: " + str(gamma_offset))
+# sleep(1)
 
-# Get accelerometer measurements and remove offsets
-phi_acc -= phi_offset
-theta_acc -= theta_offset
+# # Get accelerometer measurements and remove offsets
+# phi_acc -= phi_offset
+# theta_acc -= theta_offset
 
 
 """
@@ -91,7 +92,8 @@ t = t - t[0]
 p_0 = np.array([x_gt[0], y_gt[0], z_gt[0]])
 v_0 = np.zeros((3,))
 q_0 = R.from_quat(np.array([qx_gt[0], qy_gt[0], qz_gt[0], qw_gt[0]])).as_quat()
-g = np.array([0, 0, -9.8029])
+print(q_0)
+g = -np.array([0,  4.86194029e-03,  9.93564863e+00])
 
 V_i_0 = np.identity(3) * 0.5**2
 Theta_i_0 = np.identity(3) * (0.5 * np.pi / 180)**2
@@ -107,7 +109,7 @@ P_theta_x[0:3,0:3] = 1e-10*np.identity(3)
 P_theta_x[3:6,3:6] = 1e-10*np.identity(3)
 P_theta_x[6:9,6:9] = (0.1*np.pi/180)**2*np.identity(3)
 
-shoe_detector = SHOE(imu.imu_data[:, [1,2,3,7,8,9]], g)
+shoe_detector = SHOE(imu.imu_data[:, [1,2,3,7,8,9]], g, G=1e8)
 
 list1 = []
 list2 = []
@@ -125,14 +127,14 @@ for i in range(imu.imu_data.shape[0] - 1):
         # angle_xy = np.array([phi_acc[i], theta_acc[i]])
         # angle_z = get_mag_yaw(mag_x[i], mag_y[i], mag_z[i], angle_xy) - gamma_offset
         # quat_from_acc = R.from_euler(seq='xyz', angles=np.array([angle_xy[0], angle_xy[1], angle_z])).as_quat()
-        delta_x, P_theta_x = zero_velocity_update(x, P_theta_x, V, np.array([0, 0, 0]))
-        x = injection_obs_err_to_nominal_state(x, delta_x)
-        delta_x, P_theta_x = ESKF_reset(delta_x, P_theta_x)
+        # # delta_x, P_theta_x = zero_velocity_update(x, P_theta_x, V, np.array([0, 0, 0]))
+        # # x = injection_obs_err_to_nominal_state(x, delta_x)
+        # # delta_x, P_theta_x = ESKF_reset(delta_x, P_theta_x)
     else:
         list2.append(i)
-        delta_x, P_theta_x = zero_velocity_update(x, P_theta_x, V, np.array([-1.21049284742314,-0.088205541585698,-0.528302390620874])*0.5)
-        x = injection_obs_err_to_nominal_state(x, delta_x)
-        delta_x, P_theta_x = ESKF_reset(delta_x, P_theta_x)
+        # delta_x, P_theta_x = zero_velocity_update(x, P_theta_x, V, np.array([-1.21049284742314,-0.088205541585698,-0.528302390620874])*0.5)
+        # x = injection_obs_err_to_nominal_state(x, delta_x)
+        # delta_x, P_theta_x = ESKF_reset(delta_x, P_theta_x)
     x_hats[i, :] = x
 
     delta_x_hats[i, :] = delta_x
@@ -152,6 +154,7 @@ axs[1].plot(t[list1], theta_hat[list1], '.b', label='$\hat{\\theta}$ (Prediction
 axs[1].plot(t[list2], theta_hat[list2], '.r', label='$\hat{\\theta}$ (Prediction)')
 axs[1].plot(t, theta, 'c', label='$\\theta$ by internal algo of IMU sensor')
 # axs[1].plot(t, theta_interg, 'g', label='$\\theta_{interg}$ (Intergration)')
+axs[1].set_ylim([-0.02, 0.05])
 axs[1].set_ylabel('Rad')
 axs[1].legend()
 
@@ -163,8 +166,10 @@ axs[2].set_xlabel('Time')
 axs[2].legend()
 
 plt.figure()
-plt.gca(projection='3d')
-plt.plot(x_hats[:, 0], x_hats[:, 1], x_hats[:, 2], '.b')
-plt.plot(x_hats[list2, 0], x_hats[list2, 1], x_hats[list2, 2], '.r')
-plt.plot(x_gt, y_gt, z_gt)
+ax = plt.gca(projection='3d')
+ax.plot(x_hats[:, 0], x_hats[:, 1], x_hats[:, 2], '.b')
+ax.plot(x_hats[list2, 0], x_hats[list2, 1], x_hats[list2, 2], '.r')
+ax.plot(x_gt, y_gt, z_gt)
+ax.set_xlim([-0.4, 0.6])
+ax.set_zlim(-0.1, 0.5)
 plt.show()
