@@ -12,12 +12,10 @@ from math import sin, cos, tan, pi
 from utils import *
 from imu import *
 
-data_folder = "4"
+data_folder = "_test"
 # fname = 30
 ll = []
-list_err = []
-list_n_pts = []
-for fname in range(151):
+for fname in range(44):
     print(fname)
     dir_path = os.path.dirname(os.path.realpath(__file__))
     gt_path = os.path.join(dir_path, f'data{data_folder}/gt', f'{fname}.csv')
@@ -98,7 +96,7 @@ for fname in range(151):
     p_0 = np.array([x_gt[0], y_gt[0], z_gt[0]])
     v_0 = np.zeros((3,))
     q_0 = R.from_quat(np.array([qx_gt[0], qy_gt[0], qz_gt[0], qw_gt[0]])).as_quat()
-    g = np.array([0, 0, -9.8])
+    g = np.array([0,  0,  -9.94])
 
     V_i_0 = np.identity(3) * 0.5**2
     Theta_i_0 = np.identity(3) * (0.5 * np.pi / 180)**2
@@ -114,7 +112,7 @@ for fname in range(151):
     P_theta_x[3:6,3:6] = 1e-10*np.identity(3)
     P_theta_x[6:9,6:9] = (0.1*np.pi/180)**2*np.identity(3)
 
-    shoe_detector = SHOE(imu.imu_data[:, [1,2,3,7,8,9]], g, G=3.5e8)
+    shoe_detector = SHOE(imu.imu_data[:, [1,2,3,7,8,9]], g, G=1e8)
 
     list1 = []
     list2 = []
@@ -132,9 +130,9 @@ for fname in range(151):
             # angle_xy = np.array([phi_acc[i], theta_acc[i]])
             # angle_z = get_mag_yaw(mag_x[i], mag_y[i], mag_z[i], angle_xy) - gamma_offset
             # quat_from_acc = R.from_euler(seq='xyz', angles=np.array([angle_xy[0], angle_xy[1], angle_z])).as_quat()
-            delta_x, P_theta_x = zero_velocity_update(x, P_theta_x, V, np.array([0, 0, 0]))
-            x = injection_obs_err_to_nominal_state(x, delta_x)
-            delta_x, P_theta_x = ESKF_reset(delta_x, P_theta_x)
+            # # delta_x, P_theta_x = zero_velocity_update(x, P_theta_x, V, np.array([0, 0, 0]))
+            # # x = injection_obs_err_to_nominal_state(x, delta_x)
+            # # delta_x, P_theta_x = ESKF_reset(delta_x, P_theta_x)
         else:
             list2.append(i)
             # delta_x, P_theta_x = zero_velocity_update(x, P_theta_x, V, np.array([-1.21049284742314,-0.088205541585698,-0.528302390620874])*0.5)
@@ -185,16 +183,14 @@ for fname in range(151):
     # plt.plot(x_hats[list2, 0], x_hats[list2, 1], '.r')
     # plt.plot(x_gt, y_gt)
     # plt.axis('equal')
-    list_err.append(np.sqrt(((x_gt[1:] - x_hats[:, 0])**2 + (y_gt[1:] - x_hats[:, 1])**2 + (z_gt[1:] - x_hats[:, 2])**2)).mean())
-    list_n_pts.append(x_gt.shape[0])
 
-    # l = len(x_gt)//2
-    # vec1 = x_hats[l, 0:2] - x_hats[0, 0:2]
-    # vec2 = np.array([x_gt[l] - x_gt[0], y_gt[l] - y_gt[0]])
-    # angle = math.atan2(vec1[0]*vec2[1] - vec1[1]*vec2[0], np.dot(vec1, vec2))
-    # if np.abs(angle) < np.pi/2:
-    #     ll.append(angle)
-    # # angle = 0.5439408172798618
+    l = len(x_gt)//2
+    vec1 = x_hats[l, 0:2] - x_hats[0, 0:2]
+    vec2 = np.array([x_gt[l] - x_gt[0], y_gt[l] - y_gt[0]])
+    angle = math.atan2(vec1[0]*vec2[1] - vec1[1]*vec2[0], np.dot(vec1, vec2))
+    print(angle)
+    if np.abs(angle) < np.pi/2:
+        ll.append(angle)
     # x2 = math.cos(angle) * (x_gt - x_gt[0]) + math.sin(angle) * (y_gt - y_gt[0]) + x_gt[0]
     # y2 = -math.sin(angle) * (x_gt - x_gt[0]) + math.cos(angle) * (y_gt - y_gt[0]) + y_gt[0]
 
@@ -204,8 +200,5 @@ for fname in range(151):
     # plt.plot(x2, y2)
     # plt.axis('equal')
 
-    plt.show()
-# print(f'average: {np.array(ll).mean()}')
-print(np.array(list_err).mean())
-print(np.median(np.array(list_err)))
-print(np.array(list_n_pts).mean())
+    # plt.show()
+print(f'average: {np.array(ll).mean()}')

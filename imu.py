@@ -33,7 +33,7 @@ class IMU:
         if not angle:
             return [self.gt_data[:, 5], self.gt_data[:, 6], self.gt_data[:, 7], self.gt_data[:, 4]]
         else:
-            angles = R.from_quat(np.hstack([self.gt_data[:, 5].reshape((-1, 1)), self.gt_data[:, 6].reshape((-1, 1)).reshape((-1, 1)), self.gt_data[:, 7].reshape((-1, 1)), self.gt_data[:, 4].reshape((-1, 1))])).as_euler(seq='xyz')
+            angles = R.from_quat(np.hstack([self.gt_data[:, 5].reshape((-1, 1)), self.gt_data[:, 6].reshape((-1, 1)), self.gt_data[:, 7].reshape((-1, 1)), self.gt_data[:, 4].reshape((-1, 1))])).as_euler(seq='xyz')
             return [angles[:, 0], angles[:, 1], angles[:, 2]]
     
     # rad
